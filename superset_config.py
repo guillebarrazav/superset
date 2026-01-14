@@ -1,5 +1,4 @@
 import os
-from superset import __version__ as SUPERSET_VERSION
 
 # =========================
 # METADATA DATABASE (OBLIGATORIO)
@@ -41,19 +40,20 @@ ROW_LIMIT = 5000
 SUPERSET_WEBSERVER_TIMEOUT = 120
 
 # =========================
-# VERSION
+# BRANDING / VERSION
 # =========================
 
-CUSTOM_VERSION_INFO = {
-    "version": "1.0.0",
-    "label": "GeForce NOW Digevo Analytics Platform - QA",
-}
-
 APP_NAME = "GeForce NOW Digevo Analytics - QA"
-APP_ICON = "/static/assets/images/gfn-logo.png"
-APP_ICON_WIDTH = 200
 
+# Texto que aparece en Settings → About
+APP_VERSION_STRING = "1.0.0 (Superset 6.0.0)"
+
+# Etiqueta visual de ambiente
 ENVIRONMENT_TAG = {
     "label": "QA",
-    "color": "#f59e0b",  # ámbar
+    "color": "#f59e0b",
 }
+
+# Logo
+APP_ICON = "/static/assets/images/gfn-logo.png"
+APP_ICON_WIDTH = 220
