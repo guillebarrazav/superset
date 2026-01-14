@@ -40,20 +40,36 @@ ROW_LIMIT = 5000
 SUPERSET_WEBSERVER_TIMEOUT = 120
 
 # =========================
-# BRANDING / VERSION
+# BRANDING
 # =========================
 
-APP_NAME = "GeForce NOW Digevo Analytics - QA"
+THEME_DEFAULT = {
+    "token": {
+        "brandLogoUrl": "/static/assets/images/logo.png",
+        "brandLogoAlt": "GeForce NOW Digevo",
+        "brandLogoHref": "/",
+        "colorPrimary": "#f59e0b",
+        "fontFamily": "Inter, Helvetica, Arial",
+    },
+    "algorithm": "default",
+}
 
-# Texto que aparece en Settings → About
-APP_VERSION_STRING = "1.0.0 (Superset 6.0.0)"
+THEME_DARK = {
+    "token": {
+        "brandLogoUrl": "/static/assets/images/logo.png",
+        "brandLogoAlt": "GeForce NOW Digevo",
+        "brandLogoHref": "/",
+        "colorPrimary": "#f59e0b",
+        "fontFamily": "Inter, Helvetica, Arial",
+    },
+    "algorithm": "dark",
+}
 
-# Etiqueta visual de ambiente
 ENVIRONMENT_TAG = {
     "label": "QA",
     "color": "#f59e0b",
 }
 
-# Logo
-APP_ICON = "/static/assets/images/gfn-logo.png"
-APP_ICON_WIDTH = 220
+SHOW_ENVIRONMENT_TAG = True
+
+APP_NAME = "GeForce NOW Digevo Analytics - QA"
