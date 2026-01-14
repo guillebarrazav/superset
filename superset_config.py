@@ -57,6 +57,9 @@ THEME_DEFAULT = {
 THEME_DARK = {
     "token": {
         "brandLogoUrl": "/static/assets/images/gfn-logo.png",
+        "brandIconMaxWidth": 150,
+        "brandLogoHeight": "28px",
+        "brandLogoMargin": "10px 0",
         "brandLogoAlt": "GeForce NOW Digevo",
         "brandLogoHref": "/",
         "brandAppName": "GeForce NOW Digevo Analytics Platform",
