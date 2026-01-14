@@ -47,6 +47,8 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
+            --no-cache \
+            --build-arg FRONTEND_VERSION=${{ github.sha }} \
             --platform linux/amd64 \
             -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG \
             .

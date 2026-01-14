@@ -45,10 +45,10 @@ SUPERSET_WEBSERVER_TIMEOUT = 120
 
 THEME_DEFAULT = {
     "token": {
-        "brandLogoUrl": "/static/assets/images/logo.png",
+        "brandLogoUrl": "/static/assets/images/gfn-logo.png",
         "brandLogoAlt": "GeForce NOW Digevo",
         "brandLogoHref": "/",
-        "colorPrimary": "#f59e0b",
+        "colorPrimary": "#76B900",
         "fontFamily": "Inter, Helvetica, Arial",
     },
     "algorithm": "default",
@@ -56,20 +56,28 @@ THEME_DEFAULT = {
 
 THEME_DARK = {
     "token": {
-        "brandLogoUrl": "/static/assets/images/logo.png",
+        "brandLogoUrl": "/static/assets/images/gfn-logo.png",
         "brandLogoAlt": "GeForce NOW Digevo",
         "brandLogoHref": "/",
-        "colorPrimary": "#f59e0b",
+        "brandAppName": "GeForce NOW Digevo Analytics Platform",
+        "colorPrimary": "#76B900",
         "fontFamily": "Inter, Helvetica, Arial",
     },
     "algorithm": "dark",
 }
 
-ENVIRONMENT_TAG = {
-    "label": "QA",
-    "color": "#f59e0b",
+ENVIRONMENT_TAG_CONFIG = {
+    "variable": "FLASK_ENV",
+    "values": {
+        "qa": {
+            "color": "#f59e0b",
+            "text": "QA",
+        },
+        "production": {
+            "color": "#dc2626",
+            "text": "PROD",
+        },
+    },
 }
 
-SHOW_ENVIRONMENT_TAG = True
-
-APP_NAME = "GeForce NOW Digevo Analytics - QA"
+APP_NAME = "GeForce NOW Digevo Analytics Platform - v1.0.0 - QA"
