@@ -1,0 +1,51 @@
+name: Build & Deploy Superset to ACA
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag (ej: 6.0.0-base)"
+        required: true
+        default: "6.0.0-base"
+
+env:
+  ACR_NAME: acrreportingqa
+  ACR_LOGIN_SERVER: acrreportingqa.azurecr.io
+  IMAGE_NAME: superset
+  CONTAINER_APP_NAME: gfn-superset-qa
+  RESOURCE_GROUP: grp-reporting-prod-eastus
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: |
+          az acr login --name $ACR_NAME
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ inputs.image_tag }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ inputs.image_tag }}
+
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name $CONTAINER_APP_NAME \
+            --resource-group $RESOURCE_GROUP \
+            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ inputs.image_tag }}
