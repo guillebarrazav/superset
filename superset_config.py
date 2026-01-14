@@ -46,7 +46,9 @@ SUPERSET_WEBSERVER_TIMEOUT = 120
 THEME_DEFAULT = {
     "token": {
         "brandLogoUrl": "/static/assets/images/gfn-logo.png",
-        "brandLogoAlt": "GeForce NOW Digevo",
+        "brandIconMaxWidth": 150,
+        "brandLogoHeight": "28px",
+        "brandLogoMargin": "10px 0","brandLogoAlt": "GeForce NOW Digevo",
         "brandLogoHref": "/",
         "colorPrimary": "#76B900",
         "fontFamily": "Inter, Helvetica, Arial",
@@ -56,7 +58,7 @@ THEME_DEFAULT = {
 
 THEME_DARK = {
     "token": {
-        "brandLogoUrl": "/static/assets/images/gfn-logo.png",
+        "brandLogoUrl": "/static/assets/images/gfn-logo-dark.png",
         "brandIconMaxWidth": 150,
         "brandLogoHeight": "28px",
         "brandLogoMargin": "10px 0",
