@@ -4,9 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag (ej: 6.0.0-base)"
+        description: "Docker image tag"
         required: true
         default: "6.0.0-base"
+  push:                  # <--- Agregamos el evento Push
+    branches:
+      - custom-6.0.0     # <--- Solo corre en tu rama
 
 env:
   ACR_NAME: acrreportingqa
