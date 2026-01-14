@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag"
-        required: true
+        description: "Docker image tag (optional). If empty, uses short SHA."
+        required: false
         default: "6.0.0-base"
-  push:                  # <--- Agregamos el evento Push
+  push:
     branches:
-      - custom-6.0.0     # <--- Solo corre en tu rama
+      - custom-6.0.0
 
 env:
   ACR_NAME: acrreportingqa
@@ -35,20 +35,30 @@ jobs:
         run: |
           az acr login --name $ACR_NAME
 
+      - name: Set image tag
+        run: |
+          if [ -z "${{ inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
+          fi
+          echo "Using IMAGE_TAG=$IMAGE_TAG"
+
       - name: Build Docker image
         run: |
           docker build \
             --platform linux/amd64 \
-            -t $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ inputs.image_tag }} \
+            -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG \
             .
 
       - name: Push Docker image
         run: |
-          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ inputs.image_tag }}
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
 
       - name: Deploy to Azure Container Apps
         run: |
           az containerapp update \
             --name $CONTAINER_APP_NAME \
             --resource-group $RESOURCE_GROUP \
-            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ inputs.image_tag }}
+            --container-name superset \
+            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
