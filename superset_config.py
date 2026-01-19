@@ -1,6 +1,12 @@
 import os
 
 # =========================
+# ENV
+# =========================
+FLASK_ENV = os.environ.get("FLASK_ENV", "qa").lower()
+IS_PROD = FLASK_ENV == "production"
+
+# =========================
 # METADATA DATABASE (OBLIGATORIO)
 # =========================
 SQLALCHEMY_DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI")
@@ -18,37 +24,52 @@ if not SECRET_KEY:
     raise RuntimeError("SUPERSET_SECRET_KEY is required")
 
 # =========================
-# REDIS (ACA SIDECAR)
+# REDIS / CACHE
 # =========================
-REDIS_HOST = "localhost"
-REDIS_PORT = "6379"
+REDIS_URL = os.environ.get("REDIS_URL")
 
-CACHE_CONFIG = {
-    "CACHE_TYPE": "RedisCache",
-    "CACHE_DEFAULT_TIMEOUT": 300,
-    "CACHE_KEY_PREFIX": "superset_qa_",
-    "CACHE_REDIS_HOST": REDIS_HOST,
-    "CACHE_REDIS_PORT": REDIS_PORT,
-    "CACHE_REDIS_URL": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
-}
+if REDIS_URL:
+    # PROD (Azure Cache for Redis)
+    CACHE_CONFIG = {
+        "CACHE_TYPE": "RedisCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
+        "CACHE_KEY_PREFIX": "superset_prod_",
+        "CACHE_REDIS_URL": REDIS_URL,
+    }
+else:
+    # QA (Redis sidecar)
+    REDIS_HOST = "localhost"
+    REDIS_PORT = "6379"
+
+    CACHE_CONFIG = {
+        "CACHE_TYPE": "RedisCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
+        "CACHE_KEY_PREFIX": "superset_qa_",
+        "CACHE_REDIS_HOST": REDIS_HOST,
+        "CACHE_REDIS_PORT": REDIS_PORT,
+        "CACHE_REDIS_URL": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
+    }
 
 DATA_CACHE_CONFIG = CACHE_CONFIG
 FILTER_STATE_CACHE_CONFIG = CACHE_CONFIG
 EXPLORE_FORM_DATA_CACHE_CONFIG = CACHE_CONFIG
 
-ROW_LIMIT = 5000
-SUPERSET_WEBSERVER_TIMEOUT = 120
+# =========================
+# LIMITS / TIMEOUTS
+# =========================
+ROW_LIMIT = 10000 if IS_PROD else 5000
+SUPERSET_WEBSERVER_TIMEOUT = 300 if IS_PROD else 120
 
 # =========================
 # BRANDING
 # =========================
-
 THEME_DEFAULT = {
     "token": {
         "brandLogoUrl": "/static/assets/images/gfn-logo.png",
         "brandIconMaxWidth": 150,
         "brandLogoHeight": "28px",
-        "brandLogoMargin": "10px 0","brandLogoAlt": "GeForce NOW Digevo",
+        "brandLogoMargin": "10px 0",
+        "brandLogoAlt": "GeForce NOW Digevo",
         "brandLogoHref": "/",
         "colorPrimary": "#76B900",
         "fontFamily": "Inter, Helvetica, Arial",
@@ -85,4 +106,8 @@ ENVIRONMENT_TAG_CONFIG = {
     },
 }
 
-APP_NAME = "GeForce NOW Digevo Analytics Platform - v1.0.0 - QA"
+APP_NAME = (
+    "GeForce NOW Digevo Analytics Platform - PROD - v1.0.0"
+    if IS_PROD
+    else "GeForce NOW Digevo Analytics Platform - QA - v1.0.0"
+)

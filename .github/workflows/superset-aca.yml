@@ -6,61 +6,103 @@ on:
       image_tag:
         description: "Docker image tag (optional). If empty, uses short SHA."
         required: false
-        default: "6.0.0-base"
+        default: ""
   push:
     branches:
       - custom-6.0.0
 
 env:
-  ACR_NAME: acrreportingqa
-  ACR_LOGIN_SERVER: acrreportingqa.azurecr.io
+  # QA
+  ACR_QA_NAME: acrreportingqa
+  ACR_QA_LOGIN_SERVER: acrreportingqa.azurecr.io
+  CONTAINER_APP_QA: gfn-superset-qa
+
+  # PROD
+  ACR_PROD_NAME: acrreportingprod
+  ACR_PROD_LOGIN_SERVER: acrreportingprod.azurecr.io
+  CONTAINER_APP_PROD: gfn-superset-prod
+
   IMAGE_NAME: superset
-  CONTAINER_APP_NAME: gfn-superset-qa
   RESOURCE_GROUP: grp-reporting-prod-eastus
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: set-tag
+        run: |
+          if [ -z "${{ inputs.image_tag }}" ]; then
+            TAG=${GITHUB_SHA::7}
+          else
+            TAG=${{ inputs.image_tag }}
+          fi
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Log in to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to ACR
-        run: |
-          az acr login --name $ACR_NAME
-
-      - name: Set image tag
-        run: |
-          if [ -z "${{ inputs.image_tag }}" ]; then
-            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
-          fi
-          echo "Using IMAGE_TAG=$IMAGE_TAG"
-
-      - name: Build Docker image
+      - name: Build image
         run: |
           docker build \
-            --no-cache \
-            --build-arg FRONTEND_VERSION=${{ github.sha }} \
             --platform linux/amd64 \
-            -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG \
+            --build-arg FRONTEND_VERSION=${{ github.sha }} \
+            -t superset:$IMAGE_TAG \
             .
 
-      - name: Push Docker image
+      - name: Push image to QA ACR
         run: |
-          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+          az acr login --name $ACR_QA_NAME
+          docker tag superset:$IMAGE_TAG $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+          docker push $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
 
-      - name: Deploy to Azure Container Apps
+  deploy-qa:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to QA
         run: |
           az containerapp update \
-            --name $CONTAINER_APP_NAME \
+            --name $CONTAINER_APP_QA \
             --resource-group $RESOURCE_GROUP \
             --container-name superset \
-            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+            --image $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+
+  deploy-prod:
+    needs: deploy-qa
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Push image to PROD ACR
+        run: |
+          az acr login --name $ACR_PROD_NAME
+          docker tag $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }} \
+                     $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+          docker push $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+
+      - name: Deploy to PROD
+        run: |
+          az containerapp update \
+            --name $CONTAINER_APP_PROD \
+            --resource-group $RESOURCE_GROUP \
+            --container-name superset \
+            --image $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
