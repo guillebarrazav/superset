@@ -12,6 +12,9 @@ on:
       - custom-6.0.0
 
 env:
+  IMAGE_NAME: superset
+  RESOURCE_GROUP: grp-reporting-prod-eastus
+
   # QA
   ACR_QA_NAME: acrreportingqa
   ACR_QA_LOGIN_SERVER: acrreportingqa.azurecr.io
@@ -22,10 +25,10 @@ env:
   ACR_PROD_LOGIN_SERVER: acrreportingprod.azurecr.io
   CONTAINER_APP_PROD: gfn-superset-prod
 
-  IMAGE_NAME: superset
-  RESOURCE_GROUP: grp-reporting-prod-eastus
-
 jobs:
+  # -----------------------
+  # BUILD
+  # -----------------------
   build:
     runs-on: ubuntu-latest
     outputs:
@@ -45,27 +48,39 @@ jobs:
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
+      - name: Build Docker image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --build-arg FRONTEND_VERSION=${{ github.sha }} \
+            -t superset:${IMAGE_TAG} \
+            .
+
+  # -----------------------
+  # PUBLISH QA
+  # -----------------------
+  publish-qa:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            --build-arg FRONTEND_VERSION=${{ github.sha }} \
-            -t superset:$IMAGE_TAG \
-            .
-
       - name: Push image to QA ACR
         run: |
           az acr login --name $ACR_QA_NAME
-          docker tag superset:$IMAGE_TAG $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
-          docker push $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+          docker tag superset:${{ needs.build.outputs.image_tag }} \
+                     $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+          docker push $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
 
+  # -----------------------
+  # DEPLOY QA
+  # -----------------------
   deploy-qa:
-    needs: build
+    needs: publish-qa
     runs-on: ubuntu-latest
 
     steps:
@@ -82,7 +97,10 @@ jobs:
             --container-name superset \
             --image $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
 
-  deploy-prod:
+  # -----------------------
+  # PUBLISH PROD
+  # -----------------------
+  publish-prod:
     needs: deploy-qa
     runs-on: ubuntu-latest
 
@@ -95,9 +113,22 @@ jobs:
       - name: Push image to PROD ACR
         run: |
           az acr login --name $ACR_PROD_NAME
-          docker tag $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }} \
+          docker tag superset:${{ needs.build.outputs.image_tag }} \
                      $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
           docker push $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+
+  # -----------------------
+  # DEPLOY PROD
+  # -----------------------
+  deploy-prod:
+    needs: publish-prod
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to PROD
         run: |
