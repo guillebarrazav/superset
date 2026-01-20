@@ -56,7 +56,7 @@ WORKDIR /app/superset-frontend
 
 # Create necessary folders to avoid errors in subsequent steps
 RUN mkdir -p /app/superset/static/assets \
-             /app/superset/translations
+    /app/superset/translations
 
 # Mount package files and install dependencies if not in dev mode
 # NOTE: we mount packages and plugins as they are referenced in package.json as workspaces
@@ -68,9 +68,9 @@ RUN --mount=type=bind,source=./superset-frontend/package.json,target=./package.j
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/root/.npm \
     if [ "${DEV_MODE}" = "false" ]; then \
-        npm ci; \
+    npm ci; \
     else \
-        echo "Skipping 'npm ci' in dev mode"; \
+    echo "Skipping 'npm ci' in dev mode"; \
     fi
 
 # Runs the webpack build process
@@ -84,10 +84,10 @@ FROM superset-node-ci AS superset-node
 # Build the frontend if not in dev mode
 RUN --mount=type=cache,target=/root/.npm \
     if [ "${DEV_MODE}" = "false" ]; then \
-        echo "Running 'npm run ${BUILD_CMD}'"; \
-        npm run ${BUILD_CMD}; \
+    echo "Running 'npm run ${BUILD_CMD}'"; \
+    npm run ${BUILD_CMD}; \
     else \
-        echo "Skipping 'npm run ${BUILD_CMD}' in dev mode"; \
+    echo "Skipping 'npm run ${BUILD_CMD}' in dev mode"; \
     fi;
 
 # Copy translation files
@@ -95,7 +95,7 @@ COPY superset/translations /app/superset/translations
 
 # Build translations if enabled, then cleanup localization files
 RUN if [ "${BUILD_TRANSLATIONS}" = "true" ]; then \
-        npm run build-translation; \
+    npm run build-translation; \
     fi; \
     rm -rf /app/superset/translations/*/*/*.[po,mo];
 
@@ -137,7 +137,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY superset/translations/ /app/translations_mo/
 RUN if [ "${BUILD_TRANSLATIONS}" = "true" ]; then \
-        pybabel compile -d /app/translations_mo | true; \
+    pybabel compile -d /app/translations_mo | true; \
     fi; \
     rm -f /app/translations_mo/*/*/*.[po,json]
 
@@ -162,12 +162,12 @@ COPY --chmod=755 docker/entrypoints /app/docker/entrypoints
 WORKDIR /app
 # Set up necessary directories
 RUN mkdir -p \
-      ${PYTHONPATH} \
-      superset/static \
-      requirements \
-      superset-frontend \
-      apache_superset.egg-info \
-      requirements \
+    ${PYTHONPATH} \
+    superset/static \
+    requirements \
+    superset-frontend \
+    apache_superset.egg-info \
+    requirements \
     && touch superset/static/version_info.json
 
 # Install Playwright and optionally setup headless browsers
@@ -177,12 +177,12 @@ ARG INCLUDE_CHROMIUM="false"
 ARG INCLUDE_FIREFOX="false"
 RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     if [ "${INCLUDE_CHROMIUM}" = "true" ] || [ "${INCLUDE_FIREFOX}" = "true" ]; then \
-        uv pip install playwright && \
-        playwright install-deps && \
-        if [ "${INCLUDE_CHROMIUM}" = "true" ]; then playwright install chromium; fi && \
-        if [ "${INCLUDE_FIREFOX}" = "true" ]; then playwright install firefox; fi; \
+    uv pip install playwright && \
+    playwright install-deps && \
+    if [ "${INCLUDE_CHROMIUM}" = "true" ]; then playwright install chromium; fi && \
+    if [ "${INCLUDE_FIREFOX}" = "true" ]; then playwright install firefox; fi; \
     else \
-        echo "Skipping browser installation"; \
+    echo "Skipping browser installation"; \
     fi
 
 # Copy required files for Python build
@@ -195,23 +195,23 @@ COPY --chmod=755 ./docker/entrypoints/run-server.sh /usr/bin/
 
 # Some debian libs
 RUN /app/docker/apt-install.sh \
-      curl \
-      libsasl2-dev \
-      libsasl2-modules-gssapi-mit \
-      libpq-dev \
-      libecpg-dev \
-      libldap2-dev
+    curl \
+    libsasl2-dev \
+    libsasl2-modules-gssapi-mit \
+    libpq-dev \
+    libecpg-dev \
+    libldap2-dev
 
 # Pre-load examples DuckDB file if requested
 RUN if [ "$LOAD_EXAMPLES_DUCKDB" = "true" ]; then \
-        mkdir -p /app/data && \
-        echo "Downloading pre-built examples.duckdb..." && \
-        curl -L -o /app/data/examples.duckdb \
-            "https://raw.githubusercontent.com/apache-superset/examples-data/master/examples.duckdb" && \
-        chown -R superset:superset /app/data; \
+    mkdir -p /app/data && \
+    echo "Downloading pre-built examples.duckdb..." && \
+    curl -L -o /app/data/examples.duckdb \
+    "https://raw.githubusercontent.com/apache-superset/examples-data/master/examples.duckdb" && \
+    chown -R superset:superset /app/data; \
     else \
-        mkdir -p /app/data && \
-        chown -R superset:superset /app/data; \
+    mkdir -p /app/data && \
+    chown -R superset:superset /app/data; \
     fi
 
 # Copy compiled things from previous stages
@@ -243,9 +243,17 @@ COPY superset-core superset-core
 
 RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     /app/docker/pip-install.sh --requires-build-essential -r requirements/base.txt
+
 # Install the superset package
 RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     uv pip install -e .
+
+# CUSTOM: asegurar driver Postgres en runtime
+RUN uv pip install psycopg2-binary
+
+# CUSTOM: asegurar config runtime
+COPY superset_config.py /app/pythonpath/superset_config.py
+
 RUN python -m compileall /app/superset
 
 USER superset
