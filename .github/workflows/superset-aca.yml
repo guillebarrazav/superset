@@ -105,7 +105,9 @@ jobs:
   # PUBLISH PROD
   # -----------------------
   publish-prod:
-    needs: deploy-qa
+    needs: 
+      - deploy-qa
+      - build-and-publish-qa
     runs-on: ubuntu-latest
 
     steps:
