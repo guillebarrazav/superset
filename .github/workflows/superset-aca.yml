@@ -1,4 +1,4 @@
-name: Build & Deploy Superset
+name: Build & Deploy Superset (QA → PROD)
 
 on:
   push:
@@ -9,23 +9,31 @@ on:
 env:
   IMAGE_NAME: superset
   ACR_LOGIN_SERVER: acrreportingprod.azurecr.io
+  RESOURCE_GROUP: grp-reporting-prod-eastus
 
 jobs:
   build:
     name: Build & Push Image
     runs-on: ubuntu-latest
 
-    outputs:
-      image_tag: ${{ steps.tag.outputs.tag }}
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Set image tag
-        id: tag
         run: |
-          TAG=${GITHUB_SHA::7}
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Validate image tag
+        run: |
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "ERROR: IMAGE_TAG is empty"
+            exit 1
+          fi
+
+      - name: Log image
+        run: |
+          echo "Building image: $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG"
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -33,17 +41,18 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to ACR
-        run: az acr login --name acrreportingprod
+        run: |
+          az acr login --name acrreportingprod
 
       - name: Build image
         run: |
           docker build \
-            -t $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ steps.tag.outputs.tag }} \
+            -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG \
             .
 
       - name: Push image
         run: |
-          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ steps.tag.outputs.tag }}
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
 
   deploy_qa:
     name: Deploy to QA
@@ -52,6 +61,22 @@ jobs:
     environment: qa
 
     steps:
+      - name: Set image tag
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Validate image tag
+        run: |
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "ERROR: IMAGE_TAG is empty"
+            exit 1
+          fi
+
+      - name: Log image
+        run: |
+          echo "Deploying to QA: $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG"
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -61,9 +86,9 @@ jobs:
         run: |
           az containerapp update \
             --name gfn-superset-qa \
-            --resource-group grp-reporting-prod-eastus \
+            --resource-group $RESOURCE_GROUP \
             --container-name gfn-superset-qa \
-            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
 
   deploy_prod:
     name: Deploy to PROD
@@ -72,6 +97,22 @@ jobs:
     environment: prod
 
     steps:
+      - name: Set image tag
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Validate image tag
+        run: |
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "ERROR: IMAGE_TAG is empty"
+            exit 1
+          fi
+
+      - name: Log image
+        run: |
+          echo "Deploying to PROD: $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG"
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -81,6 +122,6 @@ jobs:
         run: |
           az containerapp update \
             --name gfn-superset-prod \
-            --resource-group grp-reporting-prod-eastus \
+            --resource-group $RESOURCE_GROUP \
             --container-name gfn-superset-prod \
-            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build.outputs.image_tag }}
+            --image $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
