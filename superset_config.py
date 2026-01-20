@@ -29,6 +29,7 @@ if not SECRET_KEY:
 REDIS_URL = os.environ.get("REDIS_URL")
 
 if REDIS_URL:
+    # Entorno QA o PROD con Redis Externo (Azure Cache for Redis)
     cache_prefix = "superset_prod_" if IS_PROD else "superset_qa_"
     
     CACHE_CONFIG = {
@@ -38,6 +39,7 @@ if REDIS_URL:
         "CACHE_REDIS_URL": REDIS_URL,
     }
 else:
+    # Entorno Local / Sidecar (Fallback)
     REDIS_HOST = "localhost"
     REDIS_PORT = "6379"
 
@@ -45,14 +47,6 @@ else:
         "CACHE_TYPE": "RedisCache",
         "CACHE_DEFAULT_TIMEOUT": 300,
         "CACHE_KEY_PREFIX": "superset_dev_",
-        "CACHE_REDIS_HOST": REDIS_HOST,
-        "CACHE_REDIS_PORT": REDIS_PORT,
-        "CACHE_REDIS_URL": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
-
-    CACHE_CONFIG = {
-        "CACHE_TYPE": "RedisCache",
-        "CACHE_DEFAULT_TIMEOUT": 300,
-        "CACHE_KEY_PREFIX": "superset_qa_",
         "CACHE_REDIS_HOST": REDIS_HOST,
         "CACHE_REDIS_PORT": REDIS_PORT,
         "CACHE_REDIS_URL": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
@@ -121,7 +115,5 @@ APP_NAME = (
 )
 
 # FIX: Proxy & HTTPS en Azure Container Apps
-# Azure termina el SSL antes de llegar al contenedor. Esto le dice a Flask 
-# que confíe en las cabeceras X-Forwarded-Proto para generar URLs HTTPS.
 ENABLE_PROXY_FIX = True
 PREFERRED_URL_SCHEME = "https"
