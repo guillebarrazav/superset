@@ -29,17 +29,25 @@ if not SECRET_KEY:
 REDIS_URL = os.environ.get("REDIS_URL")
 
 if REDIS_URL:
-    # PROD (Azure Cache for Redis)
+    cache_prefix = "superset_prod_" if IS_PROD else "superset_qa_"
+    
     CACHE_CONFIG = {
         "CACHE_TYPE": "RedisCache",
         "CACHE_DEFAULT_TIMEOUT": 300,
-        "CACHE_KEY_PREFIX": "superset_prod_",
+        "CACHE_KEY_PREFIX": cache_prefix,
         "CACHE_REDIS_URL": REDIS_URL,
     }
 else:
-    # QA (Redis sidecar)
     REDIS_HOST = "localhost"
     REDIS_PORT = "6379"
+
+    CACHE_CONFIG = {
+        "CACHE_TYPE": "RedisCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
+        "CACHE_KEY_PREFIX": "superset_dev_",
+        "CACHE_REDIS_HOST": REDIS_HOST,
+        "CACHE_REDIS_PORT": REDIS_PORT,
+        "CACHE_REDIS_URL": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
 
     CACHE_CONFIG = {
         "CACHE_TYPE": "RedisCache",
@@ -111,3 +119,9 @@ APP_NAME = (
     if IS_PROD
     else "GeForce NOW Digevo Analytics Platform - QA - v1.0.0"
 )
+
+# FIX: Proxy & HTTPS en Azure Container Apps
+# Azure termina el SSL antes de llegar al contenedor. Esto le dice a Flask 
+# que confíe en las cabeceras X-Forwarded-Proto para generar URLs HTTPS.
+ENABLE_PROXY_FIX = True
+PREFERRED_URL_SCHEME = "https"
