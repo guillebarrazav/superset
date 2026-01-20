@@ -32,13 +32,15 @@ jobs:
   build-and-publish-qa:
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
+      image_tag: ${{ steps.set-tag.outputs.tag }}
 
     steps:
+      # Checkout code
       - uses: actions/checkout@v4
 
+      # Set tag (SHA or input)
       - name: Set image tag
-        id: meta
+        id: set-tag
         run: |
           if [ -z "${{ inputs.image_tag }}" ]; then
             TAG=${GITHUB_SHA::7}
@@ -47,17 +49,21 @@ jobs:
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
+      # Login to Azure
       - name: Log in to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to ACR QA
+      # Login to QA ACR
+      - name: Log in to QA ACR
         run: az acr login --name $ACR_QA_NAME
 
+      # Setup Docker Buildx for caching
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Build and push image to QA (with cache)
       - name: Build & push image to QA (with cache)
         uses: docker/build-push-action@v6
         with:
@@ -66,7 +72,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.ACR_QA_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ACR_QA_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.set-tag.outputs.tag }}
           build-args: |
             FRONTEND_VERSION=${{ github.sha }}
           cache-from: type=gha
@@ -80,6 +86,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      #- Optional: actions/checkout@v4 if needed
+
       - name: Log in to Azure
         uses: azure/login@v2
         with:
@@ -106,21 +114,28 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to ACR PROD
+      - name: Log in to PROD ACR
         run: az acr login --name $ACR_PROD_NAME
 
-      - name: Pull image from QA ACR
+      - name: Pull and push image to PROD
         run: |
-          docker pull $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build-and-publish-qa.outputs.image_tag }}
+          TAG="${{ needs.build-and-publish-qa.outputs.image_tag }}"
 
-      - name: Tag & push image to PROD
-        run: |
+          if [ -z "$TAG" ]; then
+            echo "ERROR: image tag is empty"
+            exit 1
+          fi
+
+          echo "Using tag: $TAG"
+
+          docker pull $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:$TAG
+
           docker tag \
-            $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build-and-publish-qa.outputs.image_tag }} \
-            $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build-and-publish-qa.outputs.image_tag }}
+            $ACR_QA_LOGIN_SERVER/$IMAGE_NAME:$TAG \
+            $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:$TAG
 
           docker push \
-            $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:${{ needs.build-and-publish-qa.outputs.image_tag }}
+            $ACR_PROD_LOGIN_SERVER/$IMAGE_NAME:$TAG
 
   # -----------------------
   # DEPLOY PROD
@@ -130,6 +145,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      #- Optional: actions/checkout@v4 if needed
+
       - name: Log in to Azure
         uses: azure/login@v2
         with:
