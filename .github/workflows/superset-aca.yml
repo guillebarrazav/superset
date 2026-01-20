@@ -95,7 +95,9 @@ jobs:
   # DEPLOY PROD
   # -----------------------
   deploy-prod:
-    needs: deploy-qa
+    needs: 
+      - deploy-qa
+      - build-and-push
     runs-on: ubuntu-latest
 
     steps:
